@@ -1,0 +1,295 @@
+/* 绘本网页版电子书 · 样式
+   注意：page-flip 的 CSS 由 bundle 用 style-loader 注入 <head> 末尾，可能晚于本文件。
+   因此下面把库的 8 条规则前置一份，且所有自定义选择器都保持足够高的特异性。 */
+
+/* ---- StPageFlip 2.0.7 内置规则（前置备份，勿删） ---- */
+.stf__parent { position: relative; display: block; box-sizing: border-box; transform: translateZ(0);
+  -ms-touch-action: pan-y; touch-action: pan-y; }
+.sft__wrapper, .stf__wrapper { position: relative; width: 100%; box-sizing: border-box; }
+.stf__parent canvas { position: absolute; width: 100%; height: 100%; left: 0; top: 0; }
+.stf__block { position: absolute; width: 100%; height: 100%; box-sizing: border-box; perspective: 2000px; }
+.stf__item { display: none; position: absolute; transform-style: preserve-3d; }
+.stf__outerShadow, .stf__innerShadow, .stf__hardShadow, .stf__hardInnerShadow { position: absolute; left: 0; top: 0; }
+
+/* ---- 主题 ---- */
+:root {
+  --paper: #f6f1e6;
+  --board: #2f2a24;
+  --ink: #3a332c;
+  --accent: #a67e52;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: radial-gradient(ellipse at 50% 26%, #4a4138 0%, #2b2620 58%, #1d1a16 100%);
+  color: var(--paper);
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+.app {
+  min-height: 100svh;
+  display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+@supports not (height: 100svh) { .app { min-height: 100vh; } }
+
+.topbar { flex: 0 0 auto; text-align: center; padding: 12px 12px 2px; }
+.topbar h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: .08em; }
+.topbar p { margin: 3px 0 0; font-size: 11px; opacity: .55; }
+
+/* 书台：宽度由 app.js 的 fitStage() 按 topbar/toolbar 真实占用计算 */
+#stage {
+  --h-factor: 1.5;              /* 由 app.js 按方向写入：landscape=2*ratio, portrait=ratio */
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; max-width: 1440px;
+  margin-inline: auto;
+}
+/* 空半边露出的深色书壳：直接画在 #book 上，尺寸与双页完全一致，不会比书大一圈 */
+#book {
+  position: relative; z-index: 1;
+  /* 覆盖库注入的 min-width:360px / max-width:1440px（小屏会溢出） */
+  min-width: 0 !important; max-width: none !important;
+  /* 书壳：均匀深色。原来 49.4%–50.6% 有一条近黑带，封面/封底单页时
+     会紧贴书页边缘形成"书脊阴影"，按需求一并去掉（双页时本就不可见）。 */
+  background: linear-gradient(90deg, #3a322b 0%, #443d34 50%, #3a322b 100%);
+  box-shadow: 0 26px 64px rgba(0,0,0,.55), 0 3px 10px rgba(0,0,0,.4);
+}
+
+/* ---- 页面：库每帧用 cssText 覆写 .stf__item 内联样式，
+       所有自定义样式必须写在内部 .page-inner 及其子元素上 ---- */
+.stf__item > .page-inner {
+  position: absolute; inset: 0; overflow: hidden;
+  background-color: var(--paper);
+  background-position: center; background-size: cover; background-repeat: no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.09);
+}
+.stf__item > .page-inner > .page-img {
+  display: block; width: 100%; height: 100%;
+  object-fit: contain;                 /* 不裁切绘本内容 */
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  opacity: 0; transition: opacity .3s ease;
+}
+.stf__item > .page-inner > .page-img.is-loaded { opacity: 1; }
+/* 纸张轻噪点，内联 SVG，无外链 */
+.stf__item > .page-inner::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  opacity: .045; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.5'/></svg>");
+}
+/* 中缝书脊阴影已按需求取消：两个竖版页并排时干净衔接、不加静态渐变；
+   只保留翻页动画过程中的动态阴影（由 JS 的 drawShadow 选项控制）。 */
+.stf__item[data-cover="1"] > .page-inner,
+.stf__item[data-back="1"] > .page-inner { box-shadow: inset 0 0 0 2px rgba(0,0,0,.18); }
+
+/* ---- 工具栏 ---- */
+.toolbar {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  gap: 9px; flex-wrap: wrap; padding: 10px 12px 16px;
+}
+.toolbar-sep { width: 1px; height: 20px; background: rgba(246,241,230,.2); margin: 0 3px; }
+.toolbar button, .overlay-close {
+  appearance: none; border: 1px solid rgba(246,241,230,.28);
+  background: rgba(246,241,230,.07); color: var(--paper);
+  border-radius: 6px; padding: 8px 13px; font-size: 13px; cursor: pointer;
+  font-family: inherit; transition: background .18s, border-color .18s;
+}
+.toolbar button:hover:not(:disabled), .overlay-close:hover { background: rgba(246,241,230,.16); border-color: rgba(246,241,230,.5); }
+.toolbar button:active:not(:disabled) { background: rgba(246,241,230,.24); }
+.toolbar button:disabled { opacity: .32; cursor: default; }
+.toolbar button[aria-pressed="false"] { opacity: .55; }   /* 音效关闭态 */
+#page-label { min-width: 168px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; opacity: .85; }
+
+/* ---- 遮罩层 ---- */
+#loading {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  background: #221e1a; font-size: 14px; letter-spacing: .14em;
+}
+#loading[hidden] { display: none; }
+.overlay {
+  position: fixed; inset: 0; z-index: 60; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(20,17,14,.95);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.overlay[hidden] { display: none; }
+#zoom-img { max-width: 94vw; max-height: 88svh; object-fit: contain; }
+#zoom-overlay .overlay-close { position: absolute; top: 18px; right: 18px; font-size: 22px; line-height: 1; padding: 6px 13px; }
+#toc-panel { flex-direction: column; align-items: stretch; }
+.toc-head { width: 100%; max-width: 900px; margin-inline: auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 18px 4px; font-size: 15px; }
+.toc-grid {
+  width: 100%; max-width: 900px; margin-inline: auto; max-height: 80svh; overflow: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px; padding: 12px 18px 24px;
+}
+.toc-item {
+  appearance: none; border: 1px solid rgba(246,241,230,.2); background: none;
+  padding: 4px; border-radius: 5px; cursor: pointer; color: var(--paper);
+  font-family: inherit; font-size: 11px; text-align: center;
+}
+.toc-item:hover { border-color: var(--accent); }
+.toc-item img { display: block; width: 100%; aspect-ratio: var(--page-ratio, 0.75); object-fit: cover; border-radius: 2px; }
+.toc-item span { display: block; margin-top: 4px; opacity: .7; }
+.toc-item.is-current { border-color: var(--accent); }
+
+@media (max-width: 720px) {
+  .topbar { padding-top: 8px; }
+  .topbar h1 { font-size: 13px; }
+  .topbar p { font-size: 10px; }
+  .toolbar { gap: 6px; padding: 8px 8px 12px; }
+  .toolbar button { padding: 7px 10px; font-size: 12px; }
+  /* 用分隔条占满整行，把「目录 / 放大 / 全屏」挤到第二行，避免右侧被裁 */
+  .toolbar-sep { display: block; flex-basis: 100%; height: 0; background: none; margin: 0; }
+  #page-label { min-width: 104px; font-size: 12px; }
+}
+
+/* ================= 侧边目录 =================
+   桌面：左边缘贴一个竖排把手，收起时不占正文宽度。
+   手机：把手隐藏，由工具栏「目录」按钮唤出（避免压住满屏的书页）。
+   打开方式统一走 .is-open，不用 hidden —— hidden 会打断 transition。 */
+
+.toc-fab {
+  position: fixed; z-index: 46; left: 0; top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 13px 8px; border: 1px solid rgba(246,241,230,.2); border-left: 0;
+  border-radius: 0 9px 9px 0;
+  background: rgba(38,32,26,.9); color: var(--paper);
+  font-family: inherit; cursor: pointer;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  box-shadow: 3px 0 14px rgba(0,0,0,.35);
+  transition: background .18s, border-color .18s, opacity .22s, transform .22s;
+}
+.toc-fab:hover { background: rgba(64,54,43,.96); border-color: var(--accent); }
+.toc-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toc-fab__icon { font-size: 13px; line-height: 1; opacity: .7; }
+.toc-fab__text { writing-mode: vertical-rl; font-size: 12px; letter-spacing: .26em; }
+body.toc-open .toc-fab { opacity: 0; transform: translateY(-50%) translateX(-8px); pointer-events: none; }
+
+.toc-scrim {
+  position: fixed; inset: 0; z-index: 71;
+  background: rgba(10,8,6,.58);
+  opacity: 0; visibility: hidden;
+  transition: opacity .28s ease, visibility 0s linear .28s;
+}
+.toc-scrim.is-open { opacity: 1; visibility: visible; transition: opacity .28s ease; }
+
+.toc-drawer {
+  position: fixed; z-index: 72; left: 0; top: 0; bottom: 0;
+  width: min(340px, 86vw);
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, #2c251e 0%, #211c17 100%);
+  border-right: 1px solid rgba(246,241,230,.13);
+  box-shadow: 16px 0 44px rgba(0,0,0,.55);
+  transform: translateX(-102%); visibility: hidden;
+  transition: transform .3s cubic-bezier(.4,0,.2,1), visibility 0s linear .3s;
+  padding-top: env(safe-area-inset-top);
+}
+.toc-drawer.is-open {
+  transform: none; visibility: visible;
+  transition: transform .3s cubic-bezier(.4,0,.2,1), visibility 0s;
+}
+
+.toc-drawer__head {
+  flex: 0 0 auto; display: flex; align-items: baseline; gap: 9px;
+  padding: 16px 12px 11px 18px;
+  border-bottom: 1px solid rgba(246,241,230,.11);
+}
+.toc-drawer__title { font-size: 14px; letter-spacing: .32em; }
+.toc-drawer__hint { flex: 1 1 auto; font-size: 10px; letter-spacing: .1em; opacity: .38; }
+.toc-drawer__close {
+  appearance: none; flex: 0 0 auto;
+  background: none; border: 0; color: var(--paper);
+  font-size: 22px; line-height: 1; padding: 0 7px 2px;
+  cursor: pointer; opacity: .6; border-radius: 5px;
+  font-family: inherit; transition: opacity .15s, background .15s;
+}
+.toc-drawer__close:hover { opacity: 1; background: rgba(246,241,230,.1); }
+
+.toc-drawer__body {
+  position: relative;                   /* 让条目 offsetTop 相对本容器，便于精确滚动 */
+  flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 16px;
+}
+
+.toc-ch + .toc-ch { border-top: 1px solid rgba(246,241,230,.075); }
+.toc-ch__row { display: flex; align-items: stretch; }
+.toc-ch__jump {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 7px;
+  padding: 14px 4px 11px 18px;
+  background: none; border: 0; color: var(--paper);
+  font-family: inherit; text-align: left; cursor: pointer;
+  transition: background .15s;
+}
+.toc-ch__jump:hover { background: rgba(246,241,230,.05); }
+.toc-ch__no { font-size: 10px; letter-spacing: .12em; opacity: .42; }
+.toc-ch__area { font-size: 15px; font-weight: 600; letter-spacing: .1em; }
+.toc-ch__sub { font-size: 11px; letter-spacing: .1em; opacity: .45; }
+.toc-ch.is-current .toc-ch__area { color: #d8ae7c; }
+.toc-ch.is-current .toc-ch__no,
+.toc-ch.is-current .toc-ch__sub { opacity: .72; }
+
+.toc-ch__toggle {
+  appearance: none; flex: 0 0 auto; width: 42px;
+  background: none; border: 0; color: var(--paper); opacity: .4;
+  font-size: 11px; line-height: 1; cursor: pointer; font-family: inherit;
+  transition: opacity .15s, transform .25s;
+}
+.toc-ch__toggle:hover { opacity: .9; }
+.toc-ch.is-open > .toc-ch__row > .toc-ch__toggle { transform: rotate(0deg); }
+.toc-ch:not(.is-open) > .toc-ch__row > .toc-ch__toggle { transform: rotate(-90deg); }
+
+.toc-ch__list { display: none; margin: 0 0 10px; padding: 0; list-style: none; }
+.toc-ch.is-open > .toc-ch__list { display: block; }
+
+.toc-entry {
+  width: 100%; display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; padding: 8px 16px 8px 30px;
+  background: none; border: 0; border-left: 2px solid transparent;
+  color: var(--paper); font-family: inherit; font-size: 13px;
+  text-align: left; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.toc-entry:hover { background: rgba(246,241,230,.06); }
+.toc-entry:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+.toc-entry.is-current {
+  border-left-color: var(--accent);
+  background: rgba(166,126,82,.15);
+  color: #e6c9a4;
+}
+.toc-entry__label { flex: 0 0 auto; font-size: 10px; opacity: .4; font-variant-numeric: tabular-nums; }
+.toc-entry.is-current .toc-entry__label { opacity: .68; }
+
+.toc-drawer__foot {
+  flex: 0 0 auto;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(246,241,230,.11);
+}
+.toc-drawer__foot button {
+  width: 100%; appearance: none; cursor: pointer;
+  border: 1px solid rgba(246,241,230,.2); background: rgba(246,241,230,.06);
+  color: var(--paper); border-radius: 6px; padding: 9px;
+  font-size: 12px; font-family: inherit; letter-spacing: .06em;
+  transition: background .15s, border-color .15s;
+}
+.toc-drawer__foot button:hover { background: rgba(246,241,230,.14); border-color: rgba(246,241,230,.42); }
+
+@media (max-width: 720px) {
+  /* 手机屏窄，书页几乎满宽，左边缘把手会压到画面 —— 交给工具栏按钮 */
+  .toc-fab { display: none; }
+  .toc-drawer { width: min(308px, 88vw); }
+  .toc-drawer__head { padding-top: 14px; }
+  .toc-ch__jump { padding: 13px 4px 10px 16px; }
+  .toc-entry { padding-left: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toc-drawer, .toc-scrim, .toc-fab, .toc-ch__toggle { transition-duration: .01ms; }
+}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#221e1a">
+
+<!--
+  部署后若要改分享卡片，需替换本文件里 og:url / og:image 的
+  <用户名> 与 <仓库名>（微信、QQ 的抓取器不执行 JS，必须静态写死）。
+  书名、作者、简介已由 tools/book.json 生成到 manifest，无需在此重复。
+-->
+<title>一碗海风的迁徙 · 网页版电子书</title>
+<meta name="description" content="华南人的胃如何被海风、方言和下南洋的历史塑造">
+<meta property="og:type" content="website">
+<meta property="og:title" content="一碗海风的迁徙 · 网页版电子书">
+<meta property="og:description" content="华南人的胃如何被海风、方言和下南洋的历史塑造">
+<meta property="og:url" content="https://<用户名>.github.io/<仓库名>/">
+<meta property="og:image" content="https://<用户名>.github.io/<仓库名>/assets/og.20261124.jpg">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="./assets/favicon-32.png" sizes="32x32">
+<link rel="icon" href="./assets/favicon-64.png" sizes="64x64">
+<link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+<link rel="stylesheet" href="./style.20261124.css">
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <h1 id="book-title">一碗海风的迁徙</h1>
+    <p id="book-author">许湘俞 颜诗玲 张一丁 赖伟超 著</p>
+  </header>
+
+  <main id="stage" data-orientation="landscape">
+    <div id="book"></div>
+  </main>
+
+  <nav class="toolbar" aria-label="翻页工具栏">
+    <button type="button" data-action="prev" aria-label="上一页">← 上一页</button>
+    <span id="page-label" aria-live="polite">载入中…</span>
+    <button type="button" data-action="next" aria-label="下一页">下一页 →</button>
+    <span class="toolbar-sep" aria-hidden="true"></span>
+    <button type="button" data-action="toc">目录</button>
+    <button type="button" data-action="zoom">放大</button>
+    <button type="button" data-action="fullscreen">全屏</button>
+    <button type="button" data-action="sound" id="sound-btn" aria-pressed="true" aria-label="翻页音效开关">音效 开</button>
+  </nav>
+</div>
+
+<!-- 侧边目录：桌面贴左边缘的把手，手机由工具栏「目录」唤出 -->
+<button id="toc-fab" class="toc-fab" type="button" aria-controls="toc-drawer" aria-expanded="false" aria-label="展开目录">
+  <span class="toc-fab__icon" aria-hidden="true">☰</span>
+  <span class="toc-fab__text">目录</span>
+</button>
+
+<div id="toc-scrim" class="toc-scrim"></div>
+
+<aside id="toc-drawer" class="toc-drawer" aria-label="目录" aria-hidden="true">
+  <div class="toc-drawer__head">
+    <span class="toc-drawer__title">目录</span>
+    <span class="toc-drawer__hint">六地 · 三十三味</span>
+    <button type="button" class="toc-drawer__close" data-action="close-drawer" aria-label="收起目录">×</button>
+  </div>
+  <div class="toc-drawer__body">
+    <div id="toc-tree" class="toc-tree"></div>
+  </div>
+  <div class="toc-drawer__foot">
+    <button type="button" data-action="open-grid">缩略图浏览</button>
+  </div>
+</aside>
+
+<div id="loading">正在打开绘本…</div>
+
+<div id="zoom-overlay" class="overlay" hidden>
+  <img id="zoom-img" alt="当前页放大图">
+  <button type="button" class="overlay-close" data-action="close" aria-label="关闭">×</button>
+</div>
+
+<div id="toc-panel" class="overlay" hidden>
+  <div class="toc-head">
+    <strong>全部页面</strong>
+    <button type="button" class="overlay-close" data-action="close" aria-label="关闭">×</button>
+  </div>
+  <div id="toc-grid" class="toc-grid"></div>
+</div>
+
+<script src="./vendor/page-flip.2.0.7.js"></script>
+<script src="./app.20261124.js"></script>
+</body>
+</html>
